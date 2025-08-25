@@ -67,3 +67,60 @@ Example JSON:
 - Ensure that the `email` field is unique.
 - Passwords are hashed before being stored in the database.
 - A JWT token is returned upon successful registration.
+
+## Endpoint: `/user/login`
+
+### Description
+This endpoint is used to authenticate a user and provide a JWT token for subsequent requests.
+
+### Method
+`POST`
+
+### Request Body
+The following fields are required in the request body:
+- `email` (string, required): The email address of the user. Must be a valid email format.
+- `password` (string, required): The password for the user.
+
+Example JSON:
+```json
+{
+  "email": "john.doe@example.com",
+  "password": "securepassword"
+}
+```
+
+### Response
+
+#### Success (200)
+- **Description**: User authenticated successfully.
+- **Response Body**:
+  ```json
+  {
+    "success": true,
+    "message": "Login successful",
+    "user": {
+      "id": "user_id",
+      "fullname": {
+        "firstname": "John",
+        "lastname": "Doe"
+      },
+      "email": "john.doe@example.com"
+    },
+    "token": "jwt_token"
+  }
+  ```
+
+#### Authentication Error (401)
+- **Description**: Invalid email or password.
+- **Response Body**:
+  ```json
+  {
+    "success": false,
+    "message": "Invalid email or password"
+  }
+  ```
+
+### Notes
+- Ensure that the `email` exists in the database.
+- Passwords are verified against the hashed version stored in the database.
+- A JWT token is returned upon successful authentication.
