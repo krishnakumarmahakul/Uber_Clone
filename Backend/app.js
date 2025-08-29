@@ -3,7 +3,7 @@ const cors = require('cors');
 const connectDb = require('./config/db');
 require('dotenv').config();
 const userRoutes = require('./routes/user.routes');
-
+const captainRoutes = require('./routes/captain.routes');
 const app = express();
 app.use(cors(
     {
@@ -18,6 +18,7 @@ connectDb();
 
 
 app.use("/users", userRoutes);
+app.use("/captains",captainRoutes );
 
 
 app.get("/", (req, res) => {
