@@ -1,55 +1,87 @@
 import React, { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import axios from "axios"
+import { UserDataContext } from "../context/UserContext"
 
 function UserSignup() {
-  const [form, setForm] = useState({ fullname:{
-    firstname:"",
-    lastname:""
-  }, email: "", password: "" })
+  const [form, setForm] = useState({
+    fullname: { firstname: "", lastname: "" },
+    email: "",
+    password: "",
+  })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
+  const navigate = useNavigate()
+
+  const { setUserData } = React.useContext(UserDataContext)
 
   const onChange = (e) => {
     const { name, value } = e.target
     setForm((f) => ({ ...f, [name]: value }))
     setErrors((prev) => ({ ...prev, [name]: undefined, form: undefined }))
-
   }
 
-  
-  const validate = () => {
+  const validate = (values) => {
     const next = {}
-    if (!form.name) next.name = "Name is required"
-    if (!form.email) next.email = "Email is required"
-    else if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = "Enter a valid email"
-    if (!form.password) next.password = "Password is required"
-    else if (form.password.length < 6) next.password = "Password must be at least 6 characters"
+    if (!values.fullname.firstname?.trim() || !values.fullname.lastname?.trim()) {
+      next.name = "First and last name are required"
+    }
+    if (!values.email?.trim()) next.email = "Email is required"
+    else if (!/^\S+@\S+\.\S+$/.test(values.email.trim())) next.email = "Enter a valid email"
+    if (!values.password) next.password = "Password is required"
+    else if (values.password.length < 6) next.password = "Password must be at least 6 characters"
     return next
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const nextErrors = validate()
+
+    const payload = {
+      fullname: {
+        firstname: form.fullname.firstname.trim(),
+        lastname: form.fullname.lastname.trim(),
+      },
+      email: form.email.trim().toLowerCase(),
+      password: form.password,
+    }
+
+    const nextErrors = validate(payload)
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors)
       return
     }
-    setSubmitting(true)
-    
-    
-    try {
 
-      const response = await axios.post(
-        'http://localhost:5000/users/register',
-        form
-      );
-      console.log(response.data);
-      
-     
+    setSubmitting(true)
+    try {
+      const response = await axios.post("http://localhost:5000/users/register", payload)
+
+      if (response.status === 201) {
+        const { user, token } = response.data
+        setUserData(user)
+        
+        // Add token storage verification
+        try {
+          localStorage.setItem("token", token)
+          // Verify token was stored
+          const storedToken = localStorage.getItem("token")
+          if (!storedToken) {
+            console.error("Token storage failed")
+            setErrors({ form: "Failed to save login session. Please try again." })
+            return
+          }
+          console.log("Token stored successfully:", storedToken)
+          navigate("/home")
+        } catch (storageError) {
+          console.error("localStorage error:", storageError)
+          setErrors({ form: "Failed to save login session. Please try again." })
+        }
+      } else {
+        setErrors({ form: "Signup failed. Please try again." })
+      }
     } catch (err) {
-      setErrors({ form: "Signup failed. Please try again." })
+      console.error("Signup error:", err)
+      setErrors({ form: err.response?.data?.message || "Signup failed. Please try again." })
     } finally {
       setSubmitting(false)
     }
@@ -67,48 +99,47 @@ function UserSignup() {
 
         <div className="flex flex-col">
           {/* Name Field */}
-          <label htmlFor="name" className="text-base text-gray-700 mb-2">What is your name?</label>
+          <label htmlFor="firstname" className="text-base text-gray-700 mb-2">What is your name?</label>
           <div className="flex gap-2">
-          <input
-            id="name"
-            name="firstname"
-            type="text"
-            value={form.fullname.firstname}
-            onChange={(e) =>
-              setForm((f) => ({
-                ...f,
-                fullname: { ...f.fullname, firstname: e.target.value }
-              }))
-            }
-            required
-            aria-invalid={!!errors.name}
-            aria-describedby={errors.name ? "name-error" : undefined}
-            placeholder="Firstname"
-            className="w-1/2 px-4 h-10 border border-gray-300 rounded mb-1"
-          />
-          <input
-            id="name"
-            name="lastname"
-            type="text"
-            value={form.fullname.lastname}
-            onChange={
-              (e) =>
-              setForm((f) => ({
-                ...f,
-                fullname: { ...f.fullname, lastname: e.target.value }
-              }))
-            }
-            required
-            aria-invalid={!!errors.name}
-            aria-describedby={errors.name ? "name-error" : undefined}
-            placeholder="Lastname"
-            className="w-1/2 px-4 h-10 border border-gray-300 rounded mb-1"
-          />
-
+            <input
+              id="firstname"
+              name="firstname"
+              type="text"
+              value={form.fullname.firstname}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  fullname: { ...f.fullname, firstname: e.target.value },
+                }))
+              }
+              required
+              aria-invalid={!!errors.name}
+              aria-describedby={errors.name ? "name-error" : undefined}
+              placeholder="Firstname"
+              className="w-1/2 px-4 h-10 border border-gray-300 rounded mb-1"
+            />
+            <input
+              id="lastname"
+              name="lastname"
+              type="text"
+              value={form.fullname.lastname}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  fullname: { ...f.fullname, lastname: e.target.value },
+                }))
+              }
+              required
+              aria-invalid={!!errors.name}
+              aria-describedby={errors.name ? "name-error" : undefined}
+              placeholder="Lastname"
+              className="w-1/2 px-4 h-10 border border-gray-300 rounded mb-1"
+            />
           </div>
-          
           {errors.name && (
-            <p id="name-error" className="mb-3 text-sm text-red-600">{errors.name}</p>
+            <p id="name-error" className="mb-3 text-sm text-red-600">
+              {errors.name}
+            </p>
           )}
 
           {/* Email Field */}
@@ -126,7 +157,9 @@ function UserSignup() {
             className="w-full px-4 h-10 border border-gray-300 rounded mb-1"
           />
           {errors.email && (
-            <p id="email-error" className="mb-3 text-sm text-red-600">{errors.email}</p>
+            <p id="email-error" className="mb-3 text-sm text-red-600">
+              {errors.email}
+            </p>
           )}
 
           {/* Password Field */}
@@ -144,7 +177,9 @@ function UserSignup() {
             className="w-full px-4 h-10 border border-gray-300 rounded mb-1"
           />
           {errors.password && (
-            <p id="password-error" className="mb-3 text-sm text-red-600">{errors.password}</p>
+            <p id="password-error" className="mb-3 text-sm text-red-600">
+              {errors.password}
+            </p>
           )}
 
           {/* Submit Button */}

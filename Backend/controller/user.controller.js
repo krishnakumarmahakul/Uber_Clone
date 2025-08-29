@@ -3,7 +3,7 @@ const userService = require('../services/user.service');
 const { validationResult } = require('express-validator');
 module.exports.registerUser = async (req, res ,next) => {
 
-    console.log(req.body);
+
     
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

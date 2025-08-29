@@ -1,14 +1,15 @@
 import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import axios from "axios"
+
 
 
 function UserLogin() {
   const [form, setForm] = useState({ email: "", password: "" })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
-
+  const navigate = useNavigate()
   const onChange = (e) => {
     const { name, value } = e.target
     setForm((f) => ({ ...f, [name]: value }))
@@ -22,7 +23,7 @@ function UserLogin() {
     if (!form.password) next.password = "Password is required"
     return next
   }
-console.log(form);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -38,6 +39,8 @@ console.log(form);
         form
       );
       console.log(response.data);
+      navigate('/home')
+      
 
     } catch (err) {
       setErrors({ form: "Login failed. Please try again." })

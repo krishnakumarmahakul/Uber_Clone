@@ -1,14 +1,15 @@
-import React from 'react'
-import { createContext } from "react";
-export const UserDataContext = createContext();
-function UserContext({children}) {
+import React, { useState, createContext } from "react"
+
+export const UserDataContext = createContext()
+
+function UserContext({ children }) {
+  // Do not store password in context
+  const [userData, setUserData] = useState(null) // or an object with id/email/fullname
+
   return (
-    <div>
-        <UserDataContext.Provider value={{}}>
-        {children}
-        </UserDataContext.Provider>
-        
-    </div>
+    <UserDataContext.Provider value={{ userData, setUserData }}>
+      {children}
+    </UserDataContext.Provider>
   )
 }
 

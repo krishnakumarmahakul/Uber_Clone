@@ -4,13 +4,18 @@ import { Button } from "@/components/ui/button"
 
 function CaptainSignup() {
   const [form, setForm] = useState({
-    name:  {
+    fullname:  {
       firstname: "",
       lastname: "",
     }
     ,
     email: "",
-    vehicleNumber: "",
+    vehicleProperty: {
+      color: "",
+      type: "",
+      number: "",
+      capacity: "",
+    },
     password: "",
   })
   const [errors, setErrors] = useState({})
@@ -22,29 +27,36 @@ function CaptainSignup() {
     setErrors((prev) => ({ ...prev, [name]: undefined, form: undefined }))
   }
 
-  const validate = () => {
+  const validate = (values) => {
     const next = {}
-    if (!form.name) next.name = "Name is required"
-    if (!form.email) next.email = "Email is required"
-    else if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = "Enter a valid email"
-    if (!form.vehicleNumber) next.vehicleNumber = "Vehicle number is required"
-    if (!form.password) next.password = "Password is required"
-    else if (form.password.length < 6) next.password = "Password must be at least 6 characters"
+    if (!values.fullname.firstname?.trim() || !values.fullname.lastname?.trim()) {
+      next.name = "First and last name are required"
+    }
+    if (!values.email?.trim()) next.email = "Email is required"
+    else if (!/^\S+@\S+\.\S+$/.test(values.email.trim())) next.email = "Enter a valid email"
+    if (!values.password) next.password = "Password is required"
+    else if (values.password.length < 6) next.password = "Password must be at least 6 characters"
     return next
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const nextErrors = validate()
+    const payload = {
+      fullname: {
+        firstname: form.fullname.firstname.trim(),
+        lastname: form.fullname.lastname.trim(),
+      },
+      email: form.email.trim().toLowerCase(),
+      password: form.password,
+    }
+    const nextErrors = validate(payload)
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors)
       return
     }
     setSubmitting(true)
     try {
-      // TODO: Call signup API
-      // await signupCaptain(form)
-      // Optionally navigate on success
+      
     } catch (err) {
       setErrors({ form: "Signup failed. Please try again." })
     } finally {

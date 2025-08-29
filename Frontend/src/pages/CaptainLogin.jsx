@@ -1,12 +1,12 @@
 import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Link } from "react-router-dom"
-
+import { useNavigate } from "react-router-dom"
 function CaptainLogin() {
   const [form, setForm] = useState({ email: "", password: "" })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
-
+  const navigate = useNavigate()
   const onChange = (e) => {
     const { name, value } = e.target
     setForm((f) => ({ ...f, [name]: value }))
@@ -32,6 +32,7 @@ function CaptainLogin() {
     try {
       // TODO: Call your API here
       // await loginCaptain(form.email, form.password)
+      navigate('/home')
     } catch (err) {
       setErrors({ form: "Login failed. Please try again." })
     } finally {
