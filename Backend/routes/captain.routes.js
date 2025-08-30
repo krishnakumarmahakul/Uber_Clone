@@ -30,4 +30,6 @@ captainController.loginCaptain
 router.get("/profile",
 captainController.getCaptainProfile);
 
+router.post("/logout",captainController.logoutCaptain);
+
 module.exports = router;

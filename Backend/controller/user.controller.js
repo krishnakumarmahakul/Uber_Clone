@@ -118,7 +118,15 @@ module.exports.getUserProfile = async (req, res, next) => {
 };
 
 
+module.exports.logoutUser = async (req, res, next) => {
+    // Since JWTs are stateless, we can't truly "log out" a user on the server side.
+    // The client should simply delete the token on their end.
+    res.status(200).json({
+        success: true,
+        message: "User logged out successfully"
+    });
 
+}
 
 
 

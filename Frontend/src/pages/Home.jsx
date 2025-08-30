@@ -1,11 +1,13 @@
 import React from 'react'
-import { Button } from "@/components/ui/button"
+
+import UserLogout from './UserLogout'
 function Home() {
   return (
     <>
-      this is the user home page
-      
-    </>  
+      {/* <UserLogout /> */}
+
+
+    </>
   )
 }
 

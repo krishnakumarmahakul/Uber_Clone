@@ -1,8 +1,8 @@
-import React, { useState } from "react"
+import React, { useState,useContext } from "react"
 import axios from "axios"
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-
+import {CaptainDataContext} from "@/context/CaptainContext"
 import { useNavigate } from "react-router-dom"
 
 function CaptainSignup() {
@@ -15,7 +15,8 @@ function CaptainSignup() {
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const navigate = useNavigate()
-  // top-level fields (email, password)
+  const { setCaptainData } = useContext(CaptainDataContext)
+ 
   const onChangeTop = (e) => {
     const { name, value } = e.target
     setForm((f) => ({ ...f, [name]: value }))
@@ -88,8 +89,9 @@ function CaptainSignup() {
       const response = await axios.post("http://localhost:5000/captains/register", payload)
       const data = response.data
       console.log("Signup successful:", data)
-      const token = data.token  
-      localStorage.setItem("captainToken", token)
+      const token = data?.token  
+      if (token) localStorage.setItem("captainToken", token)
+      if(data?.captain)setCaptainData(data.captain)
       navigate("/home")
 
     } catch (err) {

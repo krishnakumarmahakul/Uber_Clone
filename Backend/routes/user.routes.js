@@ -30,9 +30,8 @@ router.post(
   userController.loginUser
 );
 
-router.get("/profile",
-
-  userController.getUserProfile);
+router.get("/profile",userController.getUserProfile);
+router.post("/logout",userController.logoutUser);
 
 
 

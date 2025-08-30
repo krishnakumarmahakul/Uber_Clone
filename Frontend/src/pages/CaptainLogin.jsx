@@ -38,8 +38,8 @@ function CaptainLogin() {
       })
       const data = response.data
       if (data?.token) localStorage.setItem("captainToken", data.token)
-      if (data?.captain || data?.user) setCaptainData(data.captain || data.user)
-      navigate("/home")
+      if(data?.captain)setCaptainData(data.captain)
+      navigate("/captain/home")
     } catch (err) {
       setErrors({ form: err.response?.data?.message || "Login failed. Please try again." })
     } finally {

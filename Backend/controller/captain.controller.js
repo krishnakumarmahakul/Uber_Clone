@@ -115,3 +115,14 @@ module.exports.getCaptainProfile = async (req, res, next) => {
     next?.(err) || res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
+
+
+module.exports.logoutCaptain = async (req, res, next) => {
+  // Since JWTs are stateless, we can't truly "log out" a user on the server side.
+  // The client should simply delete the token on their end.
+  res.status(200).json({
+      success: true,
+      message: "User logged out successfully"
+  });
+
+}
