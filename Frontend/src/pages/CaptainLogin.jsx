@@ -1,8 +1,13 @@
-import React, { useState } from "react"
+import React, { useState,useContext } from "react"
 import { Button } from "@/components/ui/button"
 import { Link } from "react-router-dom"
 import { useNavigate } from "react-router-dom"
+import { CaptainDataContext } from "@/context/CaptainContext"
+
+import axios from "axios"
+
 function CaptainLogin() {
+  const { setCaptainData } = useContext(CaptainDataContext)
   const [form, setForm] = useState({ email: "", password: "" })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
@@ -24,17 +29,19 @@ function CaptainLogin() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     const nextErrors = validate()
-    if (Object.keys(nextErrors).length) {
-      setErrors(nextErrors)
-      return
-    }
+    if (Object.keys(nextErrors).length) { setErrors(nextErrors); return }
     setSubmitting(true)
     try {
-      // TODO: Call your API here
-      // await loginCaptain(form.email, form.password)
-      navigate('/home')
+      const response = await axios.post("http://localhost:5000/captains/login", {
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      })
+      const data = response.data
+      if (data?.token) localStorage.setItem("captainToken", data.token)
+      if (data?.captain || data?.user) setCaptainData(data.captain || data.user)
+      navigate("/home")
     } catch (err) {
-      setErrors({ form: "Login failed. Please try again." })
+      setErrors({ form: err.response?.data?.message || "Login failed. Please try again." })
     } finally {
       setSubmitting(false)
     }

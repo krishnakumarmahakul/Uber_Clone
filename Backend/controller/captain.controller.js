@@ -1,7 +1,7 @@
 const captainService = require('../services/captain.service');
 const { validationResult } = require('express-validator');
 const captainModel = require('../models/captain.model');
-
+const jwt = require('jsonwebtoken');
 
 
 module.exports.registerCaptain = async (req, res, next) => {
@@ -75,6 +75,43 @@ module.exports.loginCaptain = async (req, res, next) => {
     })
 }
 
+
+
 module.exports.getCaptainProfile = async (req, res, next) => {
-    
-}
+  try {
+    const auth = req.headers.authorization || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+    if (!token) {
+      return res.status(401).json({ success: false, message: "Authorization token missing" });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch {
+      return res.status(401).json({ success: false, message: "Invalid token" });
+    }
+
+    const captainId = decoded?.id || decoded?._id || decoded?.captainId;
+    if (!captainId) {
+      return res.status(401).json({ success: false, message: "Invalid token payload" });
+    }
+
+    const captain = await captainModel.findById(captainId);
+    if (!captain) {
+      return res.status(404).json({ success: false, message: "Captain not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      captain: {
+        id: captain._id,
+        fullname: captain.fullname,
+        email: captain.email,
+        vehicle: captain.vehicle,
+      },
+    });
+  } catch (err) {
+    next?.(err) || res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};

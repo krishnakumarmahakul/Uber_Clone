@@ -1,6 +1,7 @@
 const userModel = require('../models/user.model');
 const userService = require('../services/user.service');
 const { validationResult } = require('express-validator');
+const jwt = require('jsonwebtoken');
 module.exports.registerUser = async (req, res ,next) => {
 
 
@@ -78,11 +79,44 @@ module.exports.loginUser=
 }
 
 
+module.exports.getUserProfile = async (req, res, next) => {
+  try {
+    const auth = req.headers.authorization || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+    if (!token) {
+      return res.status(401).json({ success: false, message: "Authorization token missing" });
+    }
 
-module.exports.getUserProfile=async(req,res,next)=>{
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch {
+      return res.status(401).json({ success: false, message: "Invalid token" });
+    }
 
-}
- 
+    const userId = decoded?.id || decoded?._id || decoded?.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Invalid token payload" });
+    }
+
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        fullname: user.fullname,
+        email: user.email,
+      },
+    });
+  } catch (err) {
+    next?.(err) || res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
 
 
 

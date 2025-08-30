@@ -2,10 +2,12 @@ import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Link, useNavigate } from "react-router-dom"
 import axios from "axios"
+import { UserDataContext } from "@/context/UserContext"
 
 
 
 function UserLogin() {
+  const { setUserData } = useContext(UserDataContext)
   const [form, setForm] = useState({ email: "", password: "" })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
@@ -28,22 +30,17 @@ function UserLogin() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     const nextErrors = validate()
-    if (Object.keys(nextErrors).length) {
-      setErrors(nextErrors)
-      return
-    }
+    if (Object.keys(nextErrors).length) { setErrors(nextErrors); return }
     setSubmitting(true)
     try {
-      const response = await axios.post(
-        'http://localhost:5000/users/login',
-        form
-      );
-      console.log(response.data);
-      navigate('/home')
-      
-
+      const values = { email: form.email.trim().toLowerCase(), password: form.password }
+      const response = await axios.post("http://localhost:5000/users/login", values)
+      const { user, token } = response.data
+      setUserData(user)
+      localStorage.setItem("token", token)
+      navigate("/home")
     } catch (err) {
-      setErrors({ form: "Login failed. Please try again." })
+      setErrors({ form: err.response?.data?.message || "Login failed. Please try again." })
     } finally {
       setSubmitting(false)
     }
