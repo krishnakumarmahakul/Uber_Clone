@@ -11,6 +11,7 @@ import Home from './pages/Home'
 import UserProtectedWraper from './pages/UserProtectedWraper'
 import CaptainProtectedWrapper from './pages/CaptainProtectedWrapper'
 import CaptainHome from './pages/CaptainHome'
+import Riding from './components/ui/Riding'
 function App() {
   return (<>
     <Routes>
@@ -21,6 +22,7 @@ function App() {
       <Route path="/captain/signup" element={<CaptainSignup />} />
       <Route path="/captain/login" element={<CaptainLogin />} />
       <Route path="/captain/logout" element={<CaptainLogout />} />
+      <Route path="/riding" element={<Riding/>} />
       <Route path="/captain/home" element={
         <CaptainProtectedWrapper>
           <CaptainHome />

@@ -7,6 +7,8 @@ import UserLogout from './UserLogout'
 import VehiclePanel from '@/components/ui/VehiclePanel';
 import LocationSearchPanel from '@/components/ui/LocationSearchPanel';
 import ConfirmRide from '@/components/ui/ConfirmRide';
+import LookingForDriver from '@/components/ui/LookingForDriver';
+import WaitingForDriver from '@/components/ui/WaitingForDriver';
 function Home() {
 
   const [pickup, setPickup] = useState('')
@@ -211,22 +213,22 @@ const handleDestinationChange = async (e) => {
 
                     setConfirmRidePanel={setConfirmRidePanel} setVehicleFound={setVehicleFound} />
             </div>
-        {/* <div ref={vehicleFoundRef} className='fixed w-full z-10 bottom-0 translate-y-full bg-white px-3 py-6 pt-12'>
+         <div ref={vehicleFoundRef} className='fixed w-full z-10 bottom-0 translate-y-full bg-white px-3 py-6 pt-12'>
                 <LookingForDriver
-                    createRide={createRide}
+                    // createRide={createRide}
                     pickup={pickup}
                     destination={destination}
                     fare={fare}
                     vehicleType={vehicleType}
                     setVehicleFound={setVehicleFound} />
-            </div> */}
-        {/* <div ref={waitingForDriverRef} className='fixed w-full  z-10 bottom-0  bg-white px-3 py-6 pt-12'>
+            </div> 
+        <div ref={waitingForDriverRef} className='fixed w-full  z-10 bottom-0  bg-white px-3 py-6 pt-12'>
                 <WaitingForDriver
                     ride={ride}
                     setVehicleFound={setVehicleFound}
                     setWaitingForDriver={setWaitingForDriver}
                     waitingForDriver={waitingForDriver} />
-            </div> */}
+            </div>
       </div>
 
     </>
