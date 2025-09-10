@@ -6,11 +6,15 @@ import CaptainDetails from '@/components/ui/CaptainDetails'
 import RidePopUp from '@/components/ui/RidePopUp'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
+import ConfirmRidePopUp from '@/components/ui/ConfirmRidePopUp'
+
 
 function CaptainHome(props) {
    
   const [ridePopupPanel, setRidePopupPanel] = useState(true)
   const ridePopupRef=useRef(null)
+  const confirmRidePopupRef=useRef(null)
+  const [confirmRidePopupPanel, setConfirmRidePopupPanel] = useState(false)
   const { captainData } = {}
   const [online, setOnline] = useState(false)
 
@@ -25,6 +29,18 @@ function CaptainHome(props) {
         })
     }
 }, [ ridePopupPanel ])
+
+useGSAP(function () {
+  if (confirmRidePopupPanel) {
+      gsap.to(confirmRidePopupRef.current, {
+          transform: 'translateY(0)'
+      })
+  } else {
+      gsap.to(confirmRidePopupRef.current, {
+          transform: 'translateY(100%)'
+      })
+  }
+}, [ confirmRidePopupPanel ])
   
   return (
     <>
@@ -46,13 +62,13 @@ function CaptainHome(props) {
           <CaptainDetails/>
         </div>
         <div ref={ridePopupRef} className='fixed w-full z-10 bottom-0 translate-y-full bg-white px-3 py-10 pt-12'>
-          <RidePopUp setRidePopupPanel={setRidePopupPanel}/>
+          <RidePopUp setRidePopupPanel={setRidePopupPanel} setConfirmRidePopupPanel={setConfirmRidePopupPanel}/>
         </div>
-       
-
-
-
-        {/* <Button className='w-full mt-5 bg-gray-900 text-white font-semibold p-2 rounded-lg'>Make a Payment</Button> */}
+        <div ref={confirmRidePopupRef} className='fixed w-full z-10 bottom-0 translate-y-full bg-white px-3 py-10 pt-12'>
+          <ConfirmRidePopUp setConfirmRidePopupPanel={setConfirmRidePopupPanel} setRidePopupPanel={setRidePopupPanel}
+          />
+        </div>
+        
 
       </div>
     </>
