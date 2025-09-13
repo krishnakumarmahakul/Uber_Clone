@@ -324,6 +324,100 @@ Error Response (404/500 example):
 }
 ```
 
+### 3. GET /api/map/location-suggestion
+Provide autocomplete style location suggestions constrained to Odisha, India.
+
+Query Parameters:
+- input (string, required) Minimum 2 characters.
+
+Behavior:
+1. If MAPBOX_API_KEY is set:
+   - Calls Mapbox forward geocoding with autocomplete + bbox restricted to Odisha.
+   - Filters results to those whose coordinates fall inside Odisha OR whose context mentions Odisha (Odisha / IN-OD).
+2. If Mapbox unavailable/fails:
+   - Falls back to Nominatim (OpenStreetMap) with a bounded viewbox of Odisha.
+3. Returns normalized list of suggestions (up to limit).
+4. Default limit = 5 (override via MAPBOX_SUGGEST_LIMIT env).
+
+Environment Variables Impacting This Endpoint:
+- MAPBOX_API_KEY (enables Mapbox & prioritizes it)
+- MAPBOX_SUGGEST_LIMIT (default "5")
+- ODISHA_BBOX (default "81.4,17.6,87.6,22.8" => minLon,minLat,maxLon,maxLat)
+
+Example Request:
+curl -G "http://localhost:3000/api/map/location-suggestion" --data-urlencode "input=bhuba"
+
+Success Response (200) Mapbox example:
+```json
+{
+  "success": true,
+  "data": {
+    "query": "bhuba",
+    "region": "Odisha, India",
+    "suggestions": [
+      {
+        "id": "place.12345",
+        "name": "Bhubaneswar",
+        "full_address": "Bhubaneswar, Odisha, India",
+        "latitude": 20.296058,
+        "longitude": 85.82454,
+        "types": ["place"],
+        "provider": "mapbox"
+      }
+    ]
+  }
+}
+```
+
+Fallback Nominatim example:
+```json
+{
+  "success": true,
+  "data": {
+    "query": "bhuba",
+    "region": "Odisha, India",
+    "suggestions": [
+      {
+        "id": 987654321,
+        "name": "Bhubaneswar",
+        "full_address": "Bhubaneswar, Khordha, Odisha, India",
+        "latitude": 20.296058,
+        "longitude": 85.82454,
+        "types": ["city"],
+        "provider": "nominatim"
+      }
+    ]
+  }
+}
+```
+
+Validation Error (400) example (too short):
+```json
+{
+  "success": false,
+  "message": "input too short"
+}
+```
+
+Empty Suggestions (Mapbox & Nominatim both yield none):
+```json
+{
+  "success": true,
+  "data": {
+    "query": "zzzzunknown",
+    "region": "Odisha, India",
+    "suggestions": []
+  }
+}
+```
+
+Notes:
+- Results are always filtered to Odisha—entries outside state bounds are discarded.
+- Use client-side debouncing (≥300ms) to avoid excessive requests.
+- For production: add caching (e.g., in-memory LRU or Redis) keyed by (provider,input).
+
+---
+
 ### Service Logic (services/map.service.js)
 
 Core Functions & Flow:
@@ -388,3 +482,134 @@ Notes:
 - Public OSRM has rate limits; for production deploy your own router.
 - Nominatim usage should be rate-limited & cached (policy compliance).
 - Consider adding request-level caching for repeated addresses.
+
+---
+
+## Ride Booking API
+
+### 1. POST /rides/create
+Create (initiate) a new ride request. Requires authenticated user (JWT).  
+Mounted under /rides in app.js → full path: /rides/create
+
+Authentication:
+- Requires valid user session (middleware: authUser).
+- Token typically sent via Authorization: Bearer <jwt> or httpOnly cookie (depending on implementation).
+- 401 returned if missing/invalid.
+
+Request Body Fields:
+- pickup (string, required, min 3) Human readable location inside Odisha (same geocoding constraints as map APIs).
+- destination (string, required, min 3) Human readable location inside Odisha.
+- vehicleType (string, required) One of: auto, car, motorcycle, moto
+  - motorcycle is internally normalized to moto.
+- otp (string, optional) Ignored for creation. Server generates a 6‑digit OTP automatically. (Do not supply from client.)
+
+Validation Rules:
+- pickup / destination must be strings length ≥ 3.
+- vehicleType must be in allowed set.
+- Under the hood the service geocodes both addresses and rejects if they are outside Odisha or unrealistically far (> ~300km straight‑line).
+
+Fare Calculation:
+Let:
+- distanceKm = route distance (meters / 1000) computed via getDistanceTime (Mapbox → OSRM fallback).
+- durationMinutes = route duration_seconds / 60.
+
+Rates (per vehicle):
+- Base Fare: auto 30, car 50, moto 20
+- Per Km:    auto 10, car 15, moto 8
+- Per Minute:auto 2,  car 3,  moto 1.5
+
+Formula (rounded to nearest integer):
+fare = round( baseFare[type] + distanceKm * perKmRate[type] + durationMinutes * perMinuteRate[type] )
+
+Returned Fields (success):
+- _id Ride id
+- user User id (creator)
+- pickup
+- destination
+- fare (number)
+- fare_formatted (string, INR formatted)
+- distance_meters
+- distance_km
+- duration_seconds
+- duration_text (e.g. "0h 28m")
+- status (initially "pending")
+- otp (6 digit string; included only on initial creation response for verification flow)
+
+Example Request (curl):
+curl -X POST http://localhost:3000/rides/create \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <JWT_TOKEN>" \
+  -d '{
+    "pickup": "Bhubaneswar Railway Station",
+    "destination": "KIIT University",
+    "vehicleType": "car"
+  }'
+
+Example Success (201):
+```json
+{
+  "success": true,
+  "ride": {
+    "_id": "6730e2c9f1b8c9c4a8ef1234",
+    "user": "672fffa9a3c6e2d7e91a5678",
+    "pickup": "Bhubaneswar Railway Station",
+    "destination": "KIIT University",
+    "fare": 182,
+    "fare_formatted": "₹182",
+    "distance_meters": 12450,
+    "distance_km": 12.45,
+    "duration_seconds": 1680,
+    "duration_text": "0h 28m",
+    "status": "pending",
+    "otp": "593841"
+  }
+}
+```
+
+Validation Error (400):
+```json
+{
+  "errors": [
+    { "type": "field", "msg": "pickup too short", "path": "pickup", "location": "body" }
+  ]
+}
+```
+
+Unauthorized (401 example):
+```json
+{
+  "success": false,
+  "message": "Unauthorized"
+}
+```
+
+Geocode / Region Error (400):
+```json
+{
+  "success": false,
+  "message": "No Odisha location found for \"Some Far Place\""
+}
+```
+
+Routing Error (400/500):
+```json
+{
+  "success": false,
+  "message": "No route found between the locations"
+}
+```
+
+Notes:
+- OTP is server-generated; keep it confidential (used later for starting/confirming ride flow—future endpoints).
+- Distance & duration rely on Mapbox first if MAPBOX_API_KEY is configured; else OSRM.
+- If either pickup or destination cannot be geocoded inside Odisha bounds the request fails.
+- Fare is static at creation; later surge / adjustments would require additional logic.
+- For idempotency (avoid duplicate rapid requests) the client should disable the button until response.
+
+Potential Future Extensions (not implemented yet):
+- PATCH /rides/:id/accept (captain side)
+- POST /rides/:id/start (OTP verification)
+- POST /rides/:id/complete
+- Cancellation endpoints & penalty logic
+
+---
