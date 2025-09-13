@@ -43,4 +43,20 @@ async function getDistanceTime(req, res) {
   }
 }
 
-module.exports = { geocodeAddress, getDistanceTime };
+const getLocationSuggetion = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, errors: errors.array() });
+  }
+  const { input } = req.query;
+  if (!input) return res.status(400).json({ success: false, message: 'input is required' });
+
+  try {
+    const result = await mapService.getLocationSuggetion(input);
+    return res.json({ success: true, data: result });
+  } catch (e) {
+    return res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+module.exports = { geocodeAddress, getDistanceTime,getLocationSuggetion };

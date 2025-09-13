@@ -24,4 +24,14 @@ router.get(
   mapController.getDistanceTime
 );
 
+router.get("/get-location-suggetion",
+    [
+        query('input')
+            .trim()
+            .isString().withMessage('input must be string')
+            .isLength({ min: 1 }).withMessage('input too short')
+    ],
+
+     mapController.getLocationSuggetion);
+
 module.exports = router;

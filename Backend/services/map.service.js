@@ -250,7 +250,7 @@ module.exports.getDistanceTime = async (originName, destinationName, profile = '
 };
 
 // -------------------- Response Builder --------------------
-// ...existing code...
+
 function buildDistanceResponse(provider, route, originGeo, destGeo) {
   const totalSeconds = route.duration;
   const totalMinutes = Math.round(totalSeconds / 60);      // nearest minute
@@ -281,4 +281,102 @@ function buildDistanceResponse(provider, route, originGeo, destGeo) {
     duration: human
   };
 }
-// ...existing code...
+
+
+
+module.exports.getLocationSuggetion = async (input) => {
+  if (!input || !input.trim()) throw new Error('input required');
+  const query = input.trim();
+  if (query.length < 2) throw new Error('input too short');
+
+  const limit = parseInt(process.env.MAPBOX_SUGGEST_LIMIT || '5', 10);
+
+  // Odisha bounding box (minLon,minLat,maxLon,maxLat)
+  const ODISHA_BBOX_STR = process.env.ODISHA_BBOX || '81.4,17.6,87.6,22.8';
+  const [minLon, minLat, maxLon, maxLat] = ODISHA_BBOX_STR.split(',').map(Number);
+
+  function isOdishaMapboxFeature(f) {
+    if (!f) return false;
+    if ((f.place_name || '').toLowerCase().includes('odisha')) return true;
+    if (Array.isArray(f.context)) {
+      return f.context.some(c =>
+        (c.text || '').toLowerCase() === 'odisha' ||
+        (c.short_code || '').toLowerCase() === 'in-od'
+      );
+    }
+    return false;
+  }
+
+  function isOdishaNominatim(rec) {
+    return (rec.display_name || '').toLowerCase().includes('odisha');
+  }
+
+  // Prefer Mapbox if key present
+  if (process.env.MAPBOX_API_KEY) {
+    try {
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`;
+      const { data } = await axios.get(url, {
+        params: {
+          access_token: process.env.MAPBOX_API_KEY,
+          autocomplete: true,
+          limit,
+          types: 'place,locality,neighborhood,poi,address',
+          bbox: `${minLon},${minLat},${maxLon},${maxLat}` // constrain to Odisha region
+        },
+        validateStatus: s => s < 500
+      });
+
+      if (data?.message) throw new Error(data.message);
+
+      const suggestions = (data.features || [])
+        .filter(isOdishaMapboxFeature)
+        .map(f => ({
+          id: f.id,
+            name: f.text,
+            full_address: f.place_name,
+            latitude: f.center[1],
+            longitude: f.center[0],
+            types: f.place_type,
+            provider: 'mapbox'
+        }));
+
+      return { query, region: 'Odisha, India', suggestions };
+    } catch (e) {
+      // fall through to Nominatim fallback
+    }
+  }
+
+  // Fallback: Nominatim restricted to Odisha area (viewbox + bounded=1)
+  const nominatimUrl = 'https://nominatim.openstreetmap.org/search';
+  const viewbox = `${minLon},${maxLat},${maxLon},${minLat}`; // left,top,right,bottom
+  const { data } = await axios.get(nominatimUrl, {
+    params: {
+      q: query,
+      format: 'json',
+      limit,
+      viewbox,
+      bounded: 1,
+      countrycodes: 'in'
+    },
+    headers: { 'User-Agent': 'uber-clone-app/1.0' },
+    validateStatus: s => s < 500
+  });
+
+  const suggestions = Array.isArray(data)
+    ? data
+        .filter(isOdishaNominatim)
+        .map(r => ({
+          id: r.place_id,
+          name: r.display_name.split(',')[0],
+          full_address: r.display_name,
+          latitude: parseFloat(r.lat),
+          longitude: parseFloat(r.lon),
+          types: [r.type],
+          provider: 'nominatim'
+        }))
+    : [];
+
+  return { query, region: 'Odisha, India', suggestions };
+};
+
+
