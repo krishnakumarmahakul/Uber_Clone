@@ -5,7 +5,9 @@ const bcrypt = require('bcryptjs');
 
 
 module.exports.authUser=async(req,res,next)=>{
-    const token=req.cookies.token || req.headers.authorization?.split(" ")[1];
+     const cookieToken = req.cookies?.token;
+    const headerToken = req.headers.authorization?.split(" ")[1];
+    const token = cookieToken || headerToken;
 
     if(!token){
         return res.status(401).json({
