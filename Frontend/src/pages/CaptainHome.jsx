@@ -7,6 +7,7 @@ import RidePopUp from '@/components/ui/RidePopUp'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
 import ConfirmRidePopUp from '@/components/ui/ConfirmRidePopUp'
+import LiveTraking from '@/components/ui/LiveTraking'
 
 
 function CaptainHome(props) {
@@ -19,6 +20,7 @@ function CaptainHome(props) {
   const [online, setOnline] = useState(false)
 
   useGSAP(function () {
+
     if (ridePopupPanel) {
         gsap.to(ridePopupRef.current, {
             transform: 'translateY(0)'
@@ -44,6 +46,7 @@ useGSAP(function () {
   
   return (
     <>
+    {/* <LiveTraking/> */}
       {/* <CaptainLogout/> */}
       <div className='h-screen w-full'>
         <div className='fixed p-6 top-0 flex items-center justify-between w-screen'>
@@ -64,13 +67,12 @@ useGSAP(function () {
         <div ref={ridePopupRef} className='fixed w-full z-10 bottom-0 translate-y-full bg-white px-3 py-10 pt-12'>
           <RidePopUp setRidePopupPanel={setRidePopupPanel} setConfirmRidePopupPanel={setConfirmRidePopupPanel}/>
         </div>
-        <div ref={confirmRidePopupRef} className='fixed w-full z-10 bottom-0 translate-y-full bg-white px-3 py-10 pt-12'>
+        <div ref={confirmRidePopupRef} className='fixed w-full h-screen z-10 bottom-0 translate-y-full bg-white px-3 py-10 pt-12'>
           <ConfirmRidePopUp setConfirmRidePopupPanel={setConfirmRidePopupPanel} setRidePopupPanel={setRidePopupPanel}
           />
         </div>
-        
-
       </div>
+      
     </>
 
   )

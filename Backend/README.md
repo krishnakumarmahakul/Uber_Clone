@@ -221,3 +221,170 @@ They must register and authenticate to access protected captain routes.
   "message": "Invalid email or password"
 }
 ```
+
+## Map / Geocoding & Routing API
+
+### 1. GET /api/map/geocode
+Resolve a free‑form address (or raw coordinates) to latitude/longitude.
+
+Query Parameters:
+- address (string, required) Free text. Examples: Bhubaneswar, Station Square, 20.2961,85.8245, 20.29 85.82
+
+Behavior:
+1. Attempts to parse raw "lat,lon" (or "lat lon") first (tolerant; auto-detect order if possible).
+2. Generates candidate variants if the input is a bare place name:
+   - {input}
+   - {input}, {DEFAULT_STATE_COUNTRY} (env or "Odisha, India")
+   - {input}, {DEFAULT_COUNTRY} (env or "India")
+3. For each candidate (first success wins):
+   - Try Mapbox (if MAPBOX_API_KEY set)
+   - Fallback to Nominatim (OpenStreetMap)
+4. Returns first successful geocode.
+
+Example Request:
+curl -G "http://localhost:3000/api/map/geocode" --data-urlencode "address=Bhubaneswar"
+
+Success Response (200):
+```json
+{
+  "success": true,
+  "data": {
+    "provider": "mapbox",
+    "address": "Bhubaneswar, Odisha, India",
+    "latitude": 20.296058,
+    "longitude": 85.82454
+  }
+}
+```
+
+If raw coordinates supplied:
+curl -G "http://localhost:3000/api/map/geocode" --data-urlencode "address=20.2961,85.8245"
+
+Possible Error (400/404/500):
+```json
+{
+  "success": false,
+  "message": "Geocode not found for \"Some Unknown Place\""
+}
+```
+
+### 2. GET /api/map/get-distance-time
+Compute route distance & estimated duration between two textual locations.
+
+Query Parameters:
+- origin (string, required)
+- destination (string, required)
+- profile (string, optional) One of driving, driving-traffic, walking, cycling (invalid values auto-fallback to driving)
+
+Process:
+1. Geocodes origin and destination independently (variant expansion same as /geocode).
+2. Builds candidate coordinate pairs.
+3. Routing priority:
+   - If MAPBOX_API_KEY present: Mapbox Directions first.
+     - If Mapbox returns “no route” / error → fallback OSRM public server.
+   - Else: OSRM directly.
+4. First successful route returns immediately.
+5. Distance returned in meters & km; duration formatted (e.g. "2h 5m").
+
+Example Request:
+curl -G "http://localhost:5000/api/map/get-distance-time" \
+  --data-urlencode "origin=Bhubaneswar Railway Station" \
+  --data-urlencode "destination=KIIT University" \
+  --data-urlencode "profile=driving"
+
+Success Response (200):
+```json
+{
+  "provider": "mapbox",
+  "origin": {
+    "query": "Bhubaneswar Railway Station",
+    "used_variant": "Bhubaneswar Railway Station, Odisha, India",
+    "name": "Bhubaneswar Railway Station, Odisha, India",
+    "latitude": 20.2701,
+    "longitude": 85.8436
+  },
+  "destination": {
+    "query": "KIIT University",
+    "used_variant": "KIIT University, Odisha, India",
+    "name": "KIIT University, Odisha, India",
+    "latitude": 20.3553,
+    "longitude": 85.8193
+  },
+  "distance_meters": 12450,
+  "distance_km": 12.45,
+  "duration": "0h 28m"
+}
+```
+
+Error Response (404/500 example):
+```json
+{
+  "success": false,
+  "message": "Route not found between \"X\" and \"Y\": Mapbox no route"
+}
+```
+
+### Service Logic (services/map.service.js)
+
+Core Functions & Flow:
+1. tryParseCoordinates(input)
+   - Detects raw numeric coordinate input (supports "lat,lon", "lon,lat", space/comma separated).
+   - Heuristics: values within [-90,90] assumed latitude; disambiguation fallback assumes (lon,lat).
+2. buildCandidateStrings(original)
+   - If input is a “bare name” (letters & spaces, no comma), generates enriched variants adding DEFAULT_STATE_COUNTRY and DEFAULT_COUNTRY.
+   - Env: DEFAULT_STATE_COUNTRY (default "Odisha, India"), DEFAULT_COUNTRY (default "India").
+3. geocodeWithMapbox(address)
+   - Uses Mapbox forward geocoding if MAPBOX_API_KEY present.
+   - Returns first feature (center coords, place_name) or null.
+4. geocodeWithNominatim(address)
+   - Public OpenStreetMap search, adds User-Agent header.
+   - Returns first match or null.
+5. geocodeSingle(candidate)
+   - Tries raw coordinate parse → Mapbox → Nominatim.
+   - Attaches variant used.
+6. geocodeWithVariants(originalInput)
+   - Iterates candidate list; returns immediately on first success (best).
+7. getAddressCordinate(address)
+   - Public export. Returns best geocode or throws if none found.
+8. getDistanceTime(originName, destinationName, profile)
+   - Geocodes both sides (collects all successful variants).
+   - Iterates Cartesian product of origin/destination variants.
+   - Routing:
+     a. routeMapbox(): Mapbox Directions API (geojson, simplified).
+     b. routeOSRM(): Public OSRM (driving only).
+     c. On Mapbox “no route” → fallback OSRM.
+   - First successful route returned; else aggregated error.
+9. buildDistanceResponse(provider, route, originGeo, destGeo)
+   - Computes km, formats duration as "Hh Mm".
+10. Environment Variables:
+    - MAPBOX_API_KEY: Enables Mapbox geocoding + routing priority.
+    - DEFAULT_STATE_COUNTRY / DEFAULT_COUNTRY: Variant expansion.
+    - DEBUG_MAP: If set (any truthy), logs failed routing attempts.
+11. Fallback Strategy:
+    - Geocoding: Mapbox → Nominatim.
+    - Routing: Mapbox → OSRM (if Mapbox fails) OR OSRM alone (no key).
+12. Error Handling:
+    - Early validation (missing address / not found).
+    - Normalized error messages for upstream controller.
+13. Extensibility:
+    - Additional providers can be inserted into geocodeSingle.
+    - Caching layer (e.g. LRU) can wrap geocodeWithVariants / route calls without modifying external API.
+
+Example Geocode Failure Handling:
+Input: "XyzNonexistentPlace"
+Candidates tried:
+[
+ "XyzNonexistentPlace",
+ "XyzNonexistentPlace, Odisha, India",
+ "XyzNonexistentPlace, India"
+]
+All fail → Error thrown: Geocode not found for "XyzNonexistentPlace"
+
+Example Distance Failure:
+If all origin/destination variant pairings fail routing:
+Error: Route not found between "A" and "B": <last provider error>
+
+Notes:
+- Public OSRM has rate limits; for production deploy your own router.
+- Nominatim usage should be rate-limited & cached (policy compliance).
+- Consider adding request-level caching for repeated addresses.

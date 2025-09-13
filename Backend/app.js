@@ -4,6 +4,7 @@ const connectDb = require('./config/db');
 require('dotenv').config();
 const userRoutes = require('./routes/user.routes');
 const captainRoutes = require('./routes/captain.routes');
+const mapRoutes = require('./routes/map.routes');
 const app = express();
 app.use(cors(
     {
@@ -19,6 +20,7 @@ connectDb();
 
 app.use("/users", userRoutes);
 app.use("/captains",captainRoutes );
+app.use('/map', mapRoutes);
 
 
 app.get("/", (req, res) => {
